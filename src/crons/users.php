@@ -214,7 +214,7 @@ function loadCron() {
         $rRestreamerArray = $rMaxConnectionsArray = array();
         $rUserIDs = CoreUtilities::confirmIDs(array_keys($rUsers));
 
-        if (count($rUserIDs) > 0) {
+        if (is_countable($rUserIDs) && count($rUserIDs) > 0) {
             $db->query('SELECT `id`, `max_connections`, `is_restreamer` FROM `lines` WHERE `id` IN (' . implode(',', $rUserIDs) . ');');
 
             foreach ($db->get_rows() as $rRow) {
