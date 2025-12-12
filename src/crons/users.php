@@ -192,7 +192,13 @@ function loadCron() {
         if (CoreUtilities::$rSettings['redis_handler']) {
             $rRedisDelete = array('line' => array(), 'server' => array(), 'server_lines' => array(), 'proxy' => array(), 'stream' => array(), 'uuid' => array(), 'count' => 0);
             $rUsers = array();
-            list($rKeys, $rConnections) = CoreUtilities::getConnections();
+            $rConnectionResult = CoreUtilities::getConnections();
+
+            if (is_array($rConnectionResult) && count($rConnectionResult) >= 2) {
+                list($rKeys, $rConnections) = $rConnectionResult;
+            } else {
+                $rKeys = $rConnections = [];
+            }    
             $i = 0;
 
             for ($rSize = count($rConnections); $i < $rSize; $i++) {
@@ -208,11 +214,11 @@ function loadCron() {
             }
             unset($rConnections);
         } else {
-            $rUsers = CoreUtilities::getConnections((CoreUtilities::$rServers[SERVER_ID]['is_main'] ? null : SERVER_ID));
+            $rUsers = CoreUtilities::getConnections((CoreUtilities::$rServers[SERVER_ID]['is_main'] ? null : SERVER_ID)) ?? [];
         }
 
         $rRestreamerArray = $rMaxConnectionsArray = array();
-        $rUserIDs = CoreUtilities::confirmIDs(array_keys($rUsers));
+        $rUserIDs = CoreUtilities::confirmIDs(array_keys($rUsers)) ?? [];
 
         if (is_countable($rUserIDs) && count($rUserIDs) > 0) {
             $db->query('SELECT `id`, `max_connections`, `is_restreamer` FROM `lines` WHERE `id` IN (' . implode(',', $rUserIDs) . ');');
@@ -293,7 +299,7 @@ function loadCron() {
                                     if ($rConnection['server_id'] == SERVER_ID) {
                                         $rIsRunning = CoreUtilities::isProcessRunning($rConnection['pid'], 'php-fpm');
                                     } else {
-                                        if ($rConnection['date_start'] <= CoreUtilities::$rServers[$rConnection['server_id']]['last_check_ago'] - 1 && 0 < count($rPHPPIDs[$rConnection['server_id']])) {
+                                        if ($rConnection['date_start'] <= CoreUtilities::$rServers[$rConnection['server_id']]['last_check_ago'] - 1 && is_countable($rPHPPIDs[$rConnection['server_id']]) && 0 < count($rPHPPIDs[$rConnection['server_id']])) {
                                             $rIsRunning = in_array(intval($rConnection['pid']), $rPHPPIDs[$rConnection['server_id']]);
                                         } else {
                                             $rIsRunning = true;
@@ -430,7 +436,7 @@ function loadCron() {
         }
     }
 
-    $rConnectionSpeeds = glob(DIVERGENCE_TMP_PATH . '*');
+    $rConnectionSpeeds = glob(DIVERGENCE_TMP_PATH . '*') ?: [];
 
     if (count($rConnectionSpeeds) > 0) {
         if (CoreUtilities::$rSettings['redis_handler']) {
@@ -502,7 +508,7 @@ function loadCron() {
             $db->query('INSERT INTO `lines_divergence`(`uuid`,`divergence`) VALUES ' . $rUpdateQuery . ' ON DUPLICATE KEY UPDATE `divergence`=VALUES(`divergence`);');
         }
 
-        if (!CoreUtilities::$rSettings['redis_handler'] && count($rLiveQuery) > 0) {
+        if (!CoreUtilities::$rSettings['redis_handler'] && is_countable($rLiveQuery) && count($rLiveQuery) > 0) {
             $rLiveQueryStr = implode(',', $rLiveQuery);
             $db->query('INSERT INTO `lines_live`(`activity_id`,`divergence`) VALUES ' . $rLiveQueryStr . ' ON DUPLICATE KEY UPDATE `divergence`=VALUES(`divergence`);');
         }
